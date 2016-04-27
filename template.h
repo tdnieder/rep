@@ -14,6 +14,8 @@
 #include "debug.h"
 #include "template_ipc.h"
 #include <stdio.h>
+#include <stdbool.h>
+
 
 /*--------------------------- Settings ------------------------------*/
 /*! @brief The number of frame buffers used. */
