@@ -17,20 +17,26 @@
 
 const int nc = OSC_CAM_MAX_IMAGE_WIDTH;
 const int nr = OSC_CAM_MAX_IMAGE_HEIGHT;
+
 //????????
 const int Border = 1;
 const float avgFac = 0.98;
 const int frgLimit = 60;
+const int MinArea = 500;
 
+//structures
+struct OSC_PICTURE Pic;
+struct OSC_VIS_REGIONS ImgRegions;
 
 /*Function Prototypes */
 
-void ResetProcess();
-void ProcessFrame();
-void ChangeDetection();
-void SetBackground();
+void ResetProcess(void);
+void ProcessFrame(void);
+void ChangeDetection(void);
+void SetBackground(void);
 void Erode_3x3(int, int);
 void Dilate_3x3(int, int);
+void DetectRegion(void);
 
 int TextColor;
 ///////??????
@@ -75,6 +81,9 @@ void ProcessFrame()
 		//draw filled rectangle
 		//DrawBoundingBox(80, 100, 110, 120, true, BLUE);
 		DrawString(200, 200, strlen(Text), TINY, TextColor, Text);
+
+		//detect moving objects and bounding box them
+		DetectRegion();
 	}
 }
 
@@ -178,6 +187,46 @@ void Dilate_3x3(int InIndex, int OutIndex){
 
 }
 
+/**
+ * detects Regions in picture, provides information about area, centroid and bounding box
+ */
+void DetectRegion(){
+	int i;
+	//get OSC picture information
+	Pic.data = data.u8TempImage[INDEX0];
+	Pic.width = nc;
+	Pic.height = nr;
+	Pic.type = OSC_PICTURE_BINARY;
 
+	for(i = 0; i < IMG_SIZE; i++){
+		data.u8TempImage[INDEX0][i] = data.u8TempImage[THRESHOLD][i] ? 1 : 0;
+	}
 
+	//make region labeling and region properties available
+	OscVisLabelBinary(&Pic, &ImgRegions);
+	OscVisGetRegionProperties(&ImgRegions);
 
+	DrawBoundingBoxes();
+}
+
+/**draws with provided information bounding boxes into pictures
+ */
+void DrawBoundingBoxes(){
+	uint16 i;
+	for(i = 0; i < ImgRegions.noOfObjects; i++){
+		if(ImgRegions.objects[i].area > MinArea){
+			DrawBoundingBox(ImgRegions.objects[i].bboxLeft,
+					ImgRegions.objects[i].bboxTop,
+					ImgRegions.objects[i].bboxRight,
+					ImgRegions.objects[i].bboxBottom, false, GREEN);
+			DrawLine((ImgRegions.objects[i].centroidX)-10,
+					(ImgRegions.objects[i].centroidY)-10,
+					(ImgRegions.objects[i].centroidX)+10,
+					(ImgRegions.objects[i].centroidY)+10, RED);
+			DrawLine((ImgRegions.objects[i].centroidX)-10,
+					(ImgRegions.objects[i].centroidY)+10,
+					(ImgRegions.objects[i].centroidX)+10,
+					(ImgRegions.objects[i].centroidY)-10, RED);
+		}
+	}
+}
